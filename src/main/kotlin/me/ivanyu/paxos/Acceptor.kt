@@ -1,28 +1,31 @@
 package me.ivanyu.paxos
 
 class Acceptor {
-    private var minBallot: Ballot? = null // TODO better name
+    private var promisedProposalId: ProposalId? = null
 
-    private var acceptedBallot: Ballot? = null
+    private var acceptedProposalId: ProposalId? = null
     private var acceptedValue: String? = null
 
-    internal fun prepare(ballot: Ballot): Promise? {
-        if (minBallot != null && minBallot!! > ballot) {
+    internal fun receivePrepare(prepare: Prepare): Promise? {
+        if (promisedProposalId != null && promisedProposalId!! > prepare.proposalId) {
             return null
         }
 
-        minBallot = ballot
-        return Promise(minBallot!!, acceptedBallot, acceptedValue)
+        // It's OK to receive duplicate Prepare.
+        promisedProposalId = prepare.proposalId
+        return Promise(promisedProposalId!!, acceptedProposalId, acceptedValue)
     }
 
-    internal fun accept(ballot: Ballot, value: String): Ballot {
-        // TODO should it accept if hasn't promised at all?
+    internal fun receiveAccept(accept: Accept): Accepted? {
+        // TODO should it accept if hasn't promisedProposalId at all?
 
-        if (minBallot == null || ballot >= minBallot!!) {
-            minBallot = ballot
-            acceptedBallot = ballot
-            acceptedValue = value
+        if (promisedProposalId == null || accept.proposalId >= promisedProposalId!!) {
+            promisedProposalId = accept.proposalId
+            acceptedProposalId = accept.proposalId
+            acceptedValue = accept.value
+            return Accepted(acceptedProposalId!!, acceptedValue!!)
+        } else {
+            return null
         }
-        return minBallot!!
     }
 }
