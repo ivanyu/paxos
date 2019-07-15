@@ -11,4 +11,7 @@ dependencies {
 
     testImplementation("org.jetbrains.kotlin:kotlin-test")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
+    testImplementation("org.junit.jupiter:junit-jupiter-engine:5.5.0")
+    testImplementation("org.mockito:mockito-core:3.0.0")
+    testImplementation("org.mockito:mockito-junit-jupiter:3.0.0")
 }

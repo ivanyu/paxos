@@ -33,3 +33,7 @@ data class ProposalId(val round: Int, val proposerId: ProposerId) : Comparable<P
         return proposerId.compareTo(other.proposerId)
     }
 }
+
+interface AcceptorDisk {
+    fun write(promisedProposalId: ProposalId?, acceptedProposalId: ProposalId?, acceptedValue: Value?)
+}
