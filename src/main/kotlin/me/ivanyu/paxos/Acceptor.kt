@@ -1,6 +1,6 @@
 package me.ivanyu.paxos
 
-class Acceptor {
+class Acceptor(val id: AcceptorId) {
     private var promisedProposalId: ProposalId? = null
 
     private var acceptedProposalId: ProposalId? = null
@@ -17,8 +17,6 @@ class Acceptor {
     }
 
     internal fun receiveAccept(accept: Accept): Accepted? {
-        // TODO should it accept if hasn't promisedProposalId at all?
-
         if (promisedProposalId == null || accept.proposalId >= promisedProposalId!!) {
             promisedProposalId = accept.proposalId
             acceptedProposalId = accept.proposalId

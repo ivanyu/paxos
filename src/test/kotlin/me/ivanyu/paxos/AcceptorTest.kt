@@ -101,4 +101,12 @@ class AcceptorTest {
                 acceptor.receivePrepare(Prepare(ProposalId(3, PROPOSER_A)))
         )
     }
+
+    @Test fun `Acceptor should accept if it hasn't given promise before`() {
+        val acceptor = Acceptor()
+        assertEquals(
+                Accepted(ProposalId(1, PROPOSER_B), "another_value"),
+                acceptor.receiveAccept(Accept(ProposalId(1, PROPOSER_B), "another_value"))
+        )
+    }
 }
