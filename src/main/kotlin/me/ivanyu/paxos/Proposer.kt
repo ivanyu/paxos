@@ -36,10 +36,7 @@ class Proposer(private val id: ProposerId, private val value: Value, private val
                 .map { it.second }
                 .filter { it.acceptedProposalId != null }
                 .maxBy { it.acceptedProposalId!! }
-        if (maxAccepted != null && maxAccepted.acceptedProposalId!! > currentProposalId()) {
-            return Accept(maxAccepted.acceptedProposalId, maxAccepted.acceptedValue!!)
-        } else {
-            return Accept(currentProposalId(), value)
-        }
+        val valueToAccept = maxAccepted?.acceptedValue ?: value
+        return Accept(currentProposalId(), valueToAccept)
     }
 }

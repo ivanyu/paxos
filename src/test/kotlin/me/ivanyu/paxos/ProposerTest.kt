@@ -53,10 +53,10 @@ class ProposerTest {
         val proposalId = proposer.nextRound().proposalId
         assertEquals(2, proposalId.round)
 
-        val highestProposalId = ProposalId(2, PROPOSER_C)
+        val highestProposalId = ProposalId(1, PROPOSER_C)
         assertNull(proposer.receivePromise(ACCEPTOR_A, Promise(proposalId, ProposalId(1, PROPOSER_B), VALUE_2)))
         assertEquals(
-                Accept(highestProposalId, VALUE_3),
+                Accept(proposalId, VALUE_3),
                 proposer.receivePromise(ACCEPTOR_B, Promise(proposalId, highestProposalId, VALUE_3))
         )
     }
