@@ -1,6 +1,6 @@
 package me.ivanyu.paxos
 
-class Acceptor(val disk: AcceptorDisk) {
+class Acceptor(val id: AcceptorId, private val disk: AcceptorDisk) {
     private var promisedProposalId: ProposalId? = null
 
     private var acceptedProposalId: ProposalId? = null
