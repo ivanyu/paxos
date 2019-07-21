@@ -7,8 +7,13 @@ import kotlin.collections.ArrayList
 
 sealed class Event
 data class DiskWrite(val diskId: String,
+                     val promisedProposalId: ProposalId?,
                      val acceptedProposalId: ProposalId?,
-                     val acceptedValue: Value?): Event()
+                     val acceptedValue: Value?): Event() {
+    override fun toString(): String {
+        return "DiskWrite($diskId, promised=$promisedProposalId, accepted=($acceptedProposalId,$acceptedValue))"
+    }
+}
 
 class GlobalObserver(private val quorumSize: Int) {
     private val logger = LogManager.getLogger(this::class.java)

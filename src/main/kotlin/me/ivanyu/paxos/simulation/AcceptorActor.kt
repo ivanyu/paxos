@@ -19,7 +19,7 @@ class AcceptorActor(private val acceptor: Acceptor): Actor(acceptor.id) {
     }
 
     override fun run() {
-        logger.debug("AcceptorActor {} starting", id)
+        logger.debug("Starting")
         try {
             while (!isInterrupted) {
                 val (proposerId, message) = network.poll(this)
@@ -43,7 +43,7 @@ class AcceptorActor(private val acceptor: Acceptor): Actor(acceptor.id) {
             interrupt()
         }
 
-        logger.debug("AcceptorActor {} exiting", id)
+        logger.debug("Stopping")
     }
 
     override fun toString(): String {

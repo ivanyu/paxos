@@ -27,7 +27,7 @@ class ProposerActor(private val roundTripMs: Long,
     private var phase: Phase = Phase.PHASE_1
 
     override fun run() {
-        logger.debug("ProposerActor {} starting", id)
+        logger.debug("Starting")
         try {
             while (!isInterrupted) {
                 when (phase) {
@@ -39,13 +39,12 @@ class ProposerActor(private val roundTripMs: Long,
             interrupt()
         }
 
-        logger.debug("ProposerActor {} exiting", id)
+        logger.debug("Stopping")
     }
 
     private fun phase1() {
         val prepare = proposer.nextRound()
-        logger.debug("[Phase 1] Starting next round with $prepare")
-        logger.debug("[Phase 1] Broadcasting $prepare")
+        logger.debug("[Phase 1] Starting next round with {}", prepare)
         network.broadcastToAcceptors(id, prepare)
 
         val waitForPromisesTimeout = roundTripMs * 2
@@ -54,14 +53,14 @@ class ProposerActor(private val roundTripMs: Long,
         while (!waitForPromisesTimer.expired()) {
             logger.debug("[Phase 1] Polling")
             val pollResult = network.poll(this, waitForPromisesTimer.remain()) ?: continue@loop
-            logger.debug("[Phase 1] Received $pollResult")
+            logger.debug("[Phase 1] Received {}", pollResult)
             val (acceptorId, message) = pollResult
             when (message) {
                 is Promise -> {
                     val accept = proposer.receivePromise(acceptorId, message)
                     if (accept != null) {
-                        logger.debug("[Phase 1] Broadcasting $accept")
-                        network.broadcastToAcceptors(id, accept) // TODO smarter
+                        logger.debug("[Phase 1] Broadcasting {}", accept)
+                        network.broadcastToAcceptors(id, accept)
                         phase = Phase.PHASE_2
                         break@loop
                     }
@@ -79,7 +78,7 @@ class ProposerActor(private val roundTripMs: Long,
         while (!waitForPromisesTimer.expired()) {
             logger.debug("[Phase 2] Polling")
             val pollResult = network.poll(this, waitForPromisesTimer.remain()) ?: continue@loop
-            logger.debug("[Phase 1] Received $pollResult")
+            logger.debug("[Phase 1] Received {}", pollResult)
             val (acceptorId, message) = pollResult
             when (message) {
                 is Promise -> { /* ignore */ }

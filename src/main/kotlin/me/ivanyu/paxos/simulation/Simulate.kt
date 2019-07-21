@@ -19,7 +19,8 @@ private val quorumSize: Int = ceil(acceptorN.toDouble() / 2).toInt()
 fun main() {
     val logger = LogManager.getLogger("main")
     val output = true
-    val waitAfterCommittedMs = roundTripMs * 30
+//    val waitAfterCommittedMs = roundTripMs * 30
+    val waitAfterCommittedMs = roundTripMs * 5
     val runs = 1000
     var commitmentBrokenCount = 0
     for (n in 0 until runs) {
@@ -27,6 +28,7 @@ fun main() {
         val commitmentBroken = run(n, waitAfterCommittedMs, output)
         if (commitmentBroken) {
             commitmentBrokenCount += 1
+            break
         }
     }
     logger.info("Commitment was broken $commitmentBrokenCount / $runs")
@@ -75,8 +77,8 @@ private fun run(runN: Int, waitAfterCommittedMs: Long, output: Boolean): Boolean
     acceptorActors.forEach { it.join() }
 
     if (output) {
-        println(observer.committedValue())
         if (observer.commitmentWasBroken) {
+            println(observer.committedValue())
             observer.eventLog().forEachIndexed { i, event ->
                 if (i == observer.committedAtIdx) {
                     print("--> ")
