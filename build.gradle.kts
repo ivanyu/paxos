@@ -2,6 +2,11 @@ plugins {
     id("org.jetbrains.kotlin.jvm").version("1.3.10")
 }
 
+java {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+}
+
 repositories {
     jcenter()
 }
