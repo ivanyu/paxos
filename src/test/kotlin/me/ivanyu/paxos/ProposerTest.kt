@@ -15,7 +15,7 @@ class ProposerTest {
 
     @Test
     fun `Proposer should not allow calling other methods before round is started`() {
-        val proposer = Proposer(PROPOSER_A, VALUE_1, -1)
+        val proposer = Proposer(PROPOSER_A, VALUE_1, -1, false)
         assertFailsWith<IllegalStateException> {
             proposer.receivePromise(ACCEPTOR_A, Promise(ProposalId(0, PROPOSER_A), null, null))
         }
@@ -23,7 +23,7 @@ class ProposerTest {
 
     @Test
     fun `Proposer should increase the round number`() {
-        val proposer = Proposer(PROPOSER_A, VALUE_1, -1)
+        val proposer = Proposer(PROPOSER_A, VALUE_1, -1, false)
         val proposalId1 = proposer.nextRound().proposalId
         assertEquals(PROPOSER_A, proposalId1.proposerId)
 
@@ -34,14 +34,14 @@ class ProposerTest {
 
     @Test
     fun `Proposer should not return Accept if quorum hasn't been reached`() {
-        val proposer = Proposer(PROPOSER_A, VALUE_1, 2)
+        val proposer = Proposer(PROPOSER_A, VALUE_1, 2, false)
         proposer.nextRound()
         assertNull(proposer.receivePromise(ACCEPTOR_A, Promise(ProposalId(0, PROPOSER_A), null, null)))
     }
 
     @Test
     fun `Proposer should return Accept for its value when no other values have been accepted`() {
-        val proposer = Proposer(PROPOSER_A, VALUE_1, 2)
+        val proposer = Proposer(PROPOSER_A, VALUE_1, 2, false)
         val initialProposalId = proposer.nextRound().proposalId
         assertNull(proposer.receivePromise(ACCEPTOR_A, Promise(ProposalId(0, PROPOSER_A), null, null)))
         assertEquals(
@@ -52,7 +52,7 @@ class ProposerTest {
 
     @Test
     fun `Proposer should return Accept for latest accepted value it knows about`() {
-        val proposer = Proposer(PROPOSER_A, VALUE_1, 2)
+        val proposer = Proposer(PROPOSER_A, VALUE_1, 2, false)
         proposer.nextRound()
         proposer.nextRound()
         val proposalId = proposer.nextRound().proposalId
@@ -68,7 +68,7 @@ class ProposerTest {
 
     @Test
     fun `Proposer should tolerate multiple Promise from one acceptor`() {
-        val proposer = Proposer(PROPOSER_A, VALUE_1, 2)
+        val proposer = Proposer(PROPOSER_A, VALUE_1, 2, false)
         proposer.nextRound()
         for (i in 1..3) {
             assertNull(proposer.receivePromise(ACCEPTOR_A, Promise(ProposalId(0, PROPOSER_A), null, null)))
@@ -77,7 +77,7 @@ class ProposerTest {
 
     @Test
     fun `Proposer should ignore old Promises`() {
-        val proposer = Proposer(PROPOSER_A, VALUE_1, 2)
+        val proposer = Proposer(PROPOSER_A, VALUE_1, 2, false)
         proposer.nextRound()
         proposer.nextRound()
         for (i in 1..3) {
@@ -87,7 +87,7 @@ class ProposerTest {
 
     @Test
     fun `Proposer should fail on incorrect proposer ID in Promise`() {
-        val proposer = Proposer(PROPOSER_A, VALUE_1, 2)
+        val proposer = Proposer(PROPOSER_A, VALUE_1, 2, false)
         proposer.nextRound()
         assertFailsWith<AssertionError> {
             proposer.receivePromise(ACCEPTOR_A, Promise(ProposalId(0, PROPOSER_B), null, null))
@@ -96,7 +96,7 @@ class ProposerTest {
 
     @Test
     fun `Proposer receive Accept and reply that value is not committed if quorum is not reached`() {
-        val proposer = Proposer(PROPOSER_A, VALUE_1, 2)
+        val proposer = Proposer(PROPOSER_A, VALUE_1, 2, false)
         proposer.nextRound()
         assertFalse(
                 proposer.receiveAccepted(ACCEPTOR_A, Accepted(ProposalId(0, PROPOSER_A), "some_value"))
@@ -105,7 +105,7 @@ class ProposerTest {
 
     @Test
     fun `Proposer receive Accept and reply that value is committed if quorum is reached`() {
-        val proposer = Proposer(PROPOSER_A, VALUE_1, 2)
+        val proposer = Proposer(PROPOSER_A, VALUE_1, 2, false)
         proposer.nextRound()
         proposer.receiveAccepted(ACCEPTOR_A, Accepted(ProposalId(0, PROPOSER_A), "some_value"))
         assertTrue(
@@ -115,7 +115,7 @@ class ProposerTest {
 
     @Test
     fun `Proposer should tolerate multiple Accepted from one acceptor`() {
-        val proposer = Proposer(PROPOSER_A, VALUE_1, 2)
+        val proposer = Proposer(PROPOSER_A, VALUE_1, 2, false)
         proposer.nextRound()
         assertFalse(
                 proposer.receiveAccepted(ACCEPTOR_A, Accepted(ProposalId(0, PROPOSER_A), "some_value"))
@@ -130,7 +130,7 @@ class ProposerTest {
 
     @Test
     fun `Proposer should fail on incorrect proposer ID in Accept`() {
-        val proposer = Proposer(PROPOSER_A, VALUE_1, 2)
+        val proposer = Proposer(PROPOSER_A, VALUE_1, 2, false)
         proposer.nextRound()
         assertFailsWith<AssertionError> {
             proposer.receiveAccepted(ACCEPTOR_A, Accepted(ProposalId(0, PROPOSER_B), "some_value"))

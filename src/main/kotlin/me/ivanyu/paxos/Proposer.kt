@@ -2,7 +2,10 @@ package me.ivanyu.paxos
 
 import java.lang.IllegalStateException
 
-class Proposer(val id: ProposerId, private val value: Value, private val quorumSize: Int) {
+class Proposer(val id: ProposerId,
+               private val value: Value,
+               private val quorumSize: Int,
+               private val cheat: Boolean) {
     var round: Int = -1
         private set(value) { field = value }
     private fun currentProposalId() = ProposalId(round, id)
@@ -35,11 +38,16 @@ class Proposer(val id: ProposerId, private val value: Value, private val quorumS
             return null
         }
 
-        val maxAccepted = receivedPromises
-                .map { it.second }
-                .filter { it.acceptedProposalId != null }
-                .maxBy { it.acceptedProposalId!! }
-        val valueToAccept = maxAccepted?.acceptedValue ?: value
+        val valueToAccept =
+                if (cheat) {
+                    value
+                } else {
+                    val maxAccepted = receivedPromises
+                            .map { it.second }
+                            .filter { it.acceptedProposalId != null }
+                            .maxBy { it.acceptedProposalId!! }
+                    maxAccepted?.acceptedValue ?: value
+                }
         return Accept(currentProposalId(), valueToAccept)
     }
 
