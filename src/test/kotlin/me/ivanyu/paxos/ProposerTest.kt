@@ -76,8 +76,9 @@ class ProposerTest {
     }
 
     @Test
-    fun `Proposer should ignore old Promises`() {
-        val proposer = Proposer(PROPOSER_A, VALUE_1, 2, false)
+    fun `Proposer should ignore Promise not from current round`() {
+        // Quorum size must be one to imitate the arrival of last required promise.
+        val proposer = Proposer(PROPOSER_A, VALUE_1, 1, false)
         proposer.nextRound()
         proposer.nextRound()
         for (i in 1..3) {
@@ -135,5 +136,19 @@ class ProposerTest {
         assertFailsWith<AssertionError> {
             proposer.receiveAccepted(ACCEPTOR_A, Accepted(ProposalId(0, PROPOSER_B), "some_value"))
         }
+    }
+
+    @Test
+    fun `Proposer should ignore Accepted not from current round`() {
+        // Quorum size must be one to imitate the arrival of last required promise.
+        val proposer = Proposer(PROPOSER_A, VALUE_1, 1, false)
+        proposer.nextRound()
+        proposer.nextRound()
+        for (i in 1..3) {
+            assertFalse(proposer.receiveAccepted(ACCEPTOR_A, Accepted(ProposalId(0, PROPOSER_A), "some_value")))
+        }
+        assertTrue(
+                proposer.receiveAccepted(ACCEPTOR_A, Accepted(ProposalId(1, PROPOSER_A), "some_value"))
+        )
     }
 }

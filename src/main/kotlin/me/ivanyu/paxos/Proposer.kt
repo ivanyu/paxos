@@ -1,11 +1,14 @@
 package me.ivanyu.paxos
 
+import org.apache.logging.log4j.LogManager
 import java.lang.IllegalStateException
 
 class Proposer(val id: ProposerId,
                private val value: Value,
                private val quorumSize: Int,
                private val cheat: Boolean) {
+    private val logger = LogManager.getLogger(this::class.java)
+
     var round: Int = -1
         private set(value) { field = value }
     private fun currentProposalId() = ProposalId(round, id)
@@ -29,7 +32,8 @@ class Proposer(val id: ProposerId,
 
         assert(promise.promisedProposalId.proposerId == id) { "Incorrect Proposer ID" }
         if (promise.promisedProposalId != currentProposalId()) {
-            // log ignoring promises other than with the current proposal ID
+            logger.debug("Ignoring {} as the current proposal ID is {}", promise, currentProposalId())
+            return null
         }
 
         receivedPromises.add(Pair(acceptorId, promise))
@@ -38,17 +42,16 @@ class Proposer(val id: ProposerId,
             return null
         }
 
-        val valueToAccept =
-                if (cheat) {
-                    value
-                } else {
-                    val maxAccepted = receivedPromises
-                            .map { it.second }
-                            .filter { it.acceptedProposalId != null }
-                            .maxBy { it.acceptedProposalId!! }
-                    maxAccepted?.acceptedValue ?: value
-                }
-        return Accept(currentProposalId(), valueToAccept)
+        if (cheat) {
+            return Accept(currentProposalId(), value)
+        } else {
+            val maxAccepted = receivedPromises
+                    .map { it.second }
+                    .filter { it.acceptedProposalId != null }
+                    .maxBy { it.acceptedProposalId!! }
+            val valueToAccept = maxAccepted?.acceptedValue ?: value
+            return Accept(currentProposalId(), valueToAccept)
+        }
     }
 
     /**
@@ -61,10 +64,10 @@ class Proposer(val id: ProposerId,
 
         assert(accepted.proposalId.proposerId == id) { "Incorrect Proposer ID" }
         if (accepted.proposalId != currentProposalId()) {
-            // log ignoring promises other than with the current proposal ID
+            logger.debug("Ignoring {} as the current proposal ID is {}", accepted, currentProposalId())
+        } else {
+            receivedAccepted.add(Pair(acceptorId, accepted))
         }
-
-        receivedAccepted.add(Pair(acceptorId, accepted))
         return receivedAccepted.size >= quorumSize
     }
 }
