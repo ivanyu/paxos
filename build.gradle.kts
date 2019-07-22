@@ -23,7 +23,15 @@ dependencies {
     testImplementation("org.mockito:mockito-junit-jupiter:3.0.0")
 }
 
-
 tasks.test {
     useJUnitPlatform()
+}
+
+tasks.register("runSimulation", JavaExec::class) {
+    dependsOn("classes")
+    classpath = sourceSets["main"].runtimeClasspath
+    main = "me.ivanyu.paxos.simulation.SimulationKt"
+    if (project.hasProperty("runs")) {
+        args(project.property("runs"))
+    }
 }

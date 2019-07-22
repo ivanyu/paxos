@@ -16,22 +16,28 @@ const val proposerN = 3
 private val time = SystemTime()
 private val quorumSize: Int = ceil(acceptorN.toDouble() / 2).toInt()
 
-fun main() {
+fun main(args: Array<String>) {
     val logger = LogManager.getLogger("main")
     val output = true
 //    val waitAfterCommittedMs = roundTripMs * 30
     val waitAfterCommittedMs = roundTripMs * 5
-    val runs = 1000
+    val runs: Int =
+            if (args.size == 1) {
+                args[0].toInt()
+            } else {
+                10000
+            }
     var commitmentBrokenCount = 0
+    logger.info("Making {} runs", runs)
     for (n in 0 until runs) {
-        logger.info("Run $n")
+        logger.info("Run {}", n)
         val commitmentBroken = run(n, waitAfterCommittedMs, output)
         if (commitmentBroken) {
             commitmentBrokenCount += 1
             break
         }
     }
-    logger.info("Commitment was broken $commitmentBrokenCount / $runs")
+    logger.info("Commitment was broken {} / {}", commitmentBrokenCount, runs)
 }
 
 /**
@@ -83,7 +89,7 @@ private fun run(runN: Int, waitAfterCommittedMs: Long, output: Boolean): Boolean
                 if (i == observer.committedAtIdx) {
                     print("--> ")
                 } else if (i == observer.commitmentBrokenAtIdx) {
-                    print("-☠- ")
+                    print("-X- ")
                 } else {
                     print("    ")
                 }
