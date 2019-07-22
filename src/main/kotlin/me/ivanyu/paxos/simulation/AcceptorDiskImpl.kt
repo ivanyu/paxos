@@ -15,8 +15,8 @@ class AcceptorDiskImpl(val id: String,
                 && this.acceptedValue == acceptedValue
         this.acceptedProposalId = acceptedProposalId
         this.acceptedValue = acceptedValue
-        if (!sameProposalIdAndValue) {
-            observer.addEvent(DiskWrite(id, acceptedProposalId, acceptedValue))
-        }
+//        if (!sameProposalIdAndValue) {
+            observer.addEvent(DiskWrite(id, promisedProposalId, acceptedProposalId, acceptedValue))
+//        }
     }
 }

@@ -40,6 +40,7 @@ class GlobalObserver(private val quorumSize: Int) {
         get() = field
 
     private lateinit var committedValue: Value
+    private lateinit var committedProposalId: ProposalId
 
     @Synchronized
     fun addEvent(event: Event) {
@@ -54,16 +55,18 @@ class GlobalObserver(private val quorumSize: Int) {
             latestEventPerDisk[event.diskId] = Pair(event.acceptedProposalId, event.acceptedValue)
         }
 
-        val quorumValue = quorumValue()
+        val quorumProposalIdAndValue = quorumProposalIdAndValue()
         if (!wasCommitted) {
-            if (quorumValue != null) {
+            if (quorumProposalIdAndValue != null) {
                 wasCommitted = true
                 committedAtIdx = eventLog.size - 1
-                committedValue = quorumValue
+                committedProposalId = quorumProposalIdAndValue.first
+                committedValue = quorumProposalIdAndValue.second
                 logger.debug("Value {} committed at {}", committedValue, committedAtIdx)
             }
-        } else if (!commitmentWasBroken) {
-            if (quorumValue != committedValue) {
+        } else if (!commitmentWasBroken && quorumProposalIdAndValue != null) {
+            if (quorumProposalIdAndValue.first != committedProposalId
+                    && quorumProposalIdAndValue.second != committedValue) {
                 commitmentWasBroken = true
                 commitmentBrokenAtIdx = eventLog.size - 1
                 logger.debug("Commitment broken at {}", commitmentBrokenAtIdx)
@@ -71,12 +74,17 @@ class GlobalObserver(private val quorumSize: Int) {
         }
     }
 
-    private fun quorumValue(): Value? {
+    private fun quorumProposalIdAndValue(): Pair<ProposalId, Value>? {
         val quorumValues = latestEventPerDisk.values
-                .mapNotNull { it.second }
+                .filter { it.first != null && it.second != null }
                 .groupBy { it }
                 .values.find { it.size >= quorumSize }
-        return quorumValues?.get(0)
+        val p = quorumValues?.get(0)
+        if (p != null) {
+            return Pair(p.first!!, p.second!!)
+        } else {
+            return null
+        }
     }
 
     @Synchronized

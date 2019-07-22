@@ -51,7 +51,7 @@ class ProposerActor(private val roundTripMs: Long,
         val waitForPromisesTimer = Timer(time, waitForPromisesTimeout)
         loop@
         while (!waitForPromisesTimer.expired()) {
-            logger.debug("[Phase 1] Polling")
+            logger.trace("[Phase 1] Polling")
             val pollResult = network.poll(this, waitForPromisesTimer.remain()) ?: continue@loop
             logger.debug("[Phase 1] Received {}", pollResult)
             val (acceptorId, message) = pollResult
