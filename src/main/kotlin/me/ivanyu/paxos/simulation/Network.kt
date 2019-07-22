@@ -23,7 +23,8 @@ interface AcceptorNetwork {
 class Network(acceptorActors: List<AcceptorActor>,
               proposerActors: List<ProposerActor>,
               private val roundTripMs: Long,
-              private val deliverMessageProb: Double) : ProposerNetwork, AcceptorNetwork {
+              private val deliverMessageProb: Double,
+              private val duplicateMessageProb: Double) : ProposerNetwork, AcceptorNetwork {
     private val scheduler = Executors.newScheduledThreadPool(1)
 
     private val acceptorQueues: Map<AcceptorId, LinkedBlockingQueue<Pair<ProposerId, MessageToAcceptor>>> = acceptorActors.map {
@@ -45,6 +46,10 @@ class Network(acceptorActors: List<AcceptorActor>,
                     proposerQueues.getValue(to).put(Pair(from, message))
                 }
                 scheduler.schedule(sendFunc, Random.nextLong(roundTripMs), TimeUnit.MILLISECONDS)
+
+                if (shouldDeliverDuplicate()) {
+                    scheduler.schedule(sendFunc, Random.nextLong(roundTripMs), TimeUnit.MILLISECONDS)
+                }
             }
         } catch (e: RejectedExecutionException) {
             // it's ok to silently ignore it
@@ -63,6 +68,10 @@ class Network(acceptorActors: List<AcceptorActor>,
                         it.value.put(Pair(from, message))
                     }
                     scheduler.schedule(sendFunc, Random.nextLong(roundTripMs), TimeUnit.MILLISECONDS)
+
+                    if (shouldDeliverDuplicate()) {
+                        scheduler.schedule(sendFunc, Random.nextLong(roundTripMs), TimeUnit.MILLISECONDS)
+                    }
                 }
             } catch (e: RejectedExecutionException) {
                 // it's ok to silently ignore it
@@ -72,6 +81,10 @@ class Network(acceptorActors: List<AcceptorActor>,
 
     private fun shouldDeliverMessage(): Boolean {
         return Random.nextDouble() < deliverMessageProb
+    }
+
+    private fun shouldDeliverDuplicate(): Boolean {
+        return Random.nextDouble() < duplicateMessageProb
     }
 
     fun shutdown() {

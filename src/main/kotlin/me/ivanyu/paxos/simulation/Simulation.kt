@@ -9,6 +9,7 @@ import kotlin.random.Random
 
 const val roundTripMs = 10L
 const val deliverMessageProb = 0.7
+const val duplicateMessageProb = 0.1
 const val cheatingProposers = false
 const val acceptorN = 3
 const val proposerN = 3
@@ -59,7 +60,7 @@ private fun run(runN: Int, waitAfterCommittedMs: Long, output: Boolean): Boolean
         val proposer = Proposer("PROPOSER_$it", "value_$it", quorumSize, cheatingProposers)
         ProposerActor(roundTripMs, time, proposer)
     }
-    val network = Network(acceptorActors, proposerActors, roundTripMs, deliverMessageProb)
+    val network = Network(acceptorActors, proposerActors, roundTripMs, deliverMessageProb, duplicateMessageProb)
 
     acceptorActors.forEach { it.attachNetwork(network) }
     proposerActors.forEach { it.attachNetwork(network) }
@@ -72,10 +73,10 @@ private fun run(runN: Int, waitAfterCommittedMs: Long, output: Boolean): Boolean
     while (!observer.wasCommitted) {
         Thread.sleep(10)
     }
-    // Give room for errors.
+    // Give room for commitment breaking errors to appear.
     Thread.sleep(waitAfterCommittedMs)
 
-    // Shutdown simulation
+    // Shutdown simulation.
     network.shutdown()
     proposerActors.forEach { it.interrupt() }
     acceptorActors.forEach { it.interrupt() }
