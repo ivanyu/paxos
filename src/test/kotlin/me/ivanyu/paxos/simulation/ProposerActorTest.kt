@@ -27,14 +27,14 @@ class ProposerActorTest {
     @Mock
     private lateinit var time: Time
     @Mock
-    private lateinit var network: ProposerNetwork
+    private lateinit var channel: ProposerChannel
     private lateinit var actor: ProposerActor
 
     @BeforeTest
     fun beforeEach() {
         val proposer = Proposer(PROPOSER_B, VALUE_2, QUORUM_SIZE, false)
         actor = ProposerActor(ROUND_TRIP_MS, time, proposer)
-        actor.attachNetwork(network)
+        actor.attachChannel(channel)
     }
 
     @AfterTest
@@ -47,15 +47,15 @@ class ProposerActorTest {
     fun `ProposerActor should work fine in happy path`() {
         val proposalId1 = ProposalId(0, PROPOSER_B)
         val proposalId2 = ProposalId(1, PROPOSER_B)
-        `when`(network.poll(sameNonNull(actor), anyLong()))
+        `when`(channel.poll(anyLong()))
                 .thenReturn(Pair(ACCEPTOR_A, Promise(proposalId1, null, null)))
                 .thenReturn(Pair(ACCEPTOR_B, Promise(proposalId1, null, null)))
                 .thenReturn(Pair(ACCEPTOR_A, Accepted(proposalId1, VALUE_2)))
                 .thenReturn(Pair(ACCEPTOR_B, Accepted(proposalId1, VALUE_2)))
         actor.start()
-        verify(network, timeout(1000).times(1)).broadcastToAcceptors(PROPOSER_B, Prepare(proposalId1))
-        verify(network, timeout(1000).times(1)).broadcastToAcceptors(PROPOSER_B, Accept(proposalId1, VALUE_2))
-        verify(network, timeout(1000).times(1)).broadcastToAcceptors(PROPOSER_B, Prepare(proposalId2))
+        verify(channel, timeout(1000).times(1)).broadcastToAcceptors(PROPOSER_B, Prepare(proposalId1))
+        verify(channel, timeout(1000).times(1)).broadcastToAcceptors(PROPOSER_B, Accept(proposalId1, VALUE_2))
+        verify(channel, timeout(1000).times(1)).broadcastToAcceptors(PROPOSER_B, Prepare(proposalId2))
         actor.interrupt()
     }
 
@@ -64,12 +64,12 @@ class ProposerActorTest {
         val proposalId0 = ProposalId(0, PROPOSER_A)
         val proposalId1 = ProposalId(0, PROPOSER_B)
 
-        `when`(network.poll(sameNonNull(actor), anyLong()))
+        `when`(channel.poll(anyLong()))
                 .thenReturn(Pair(ACCEPTOR_A, Promise(proposalId1, proposalId0, VALUE_1)))
                 .thenReturn(Pair(ACCEPTOR_B, Promise(proposalId1, null, null)))
         actor.start()
-        verify(network, timeout(1000).times(1)).broadcastToAcceptors(PROPOSER_B, Prepare(proposalId1))
-        verify(network, timeout(1000).times(1)).broadcastToAcceptors(PROPOSER_B, Accept(proposalId1, VALUE_1))
+        verify(channel, timeout(1000).times(1)).broadcastToAcceptors(PROPOSER_B, Prepare(proposalId1))
+        verify(channel, timeout(1000).times(1)).broadcastToAcceptors(PROPOSER_B, Accept(proposalId1, VALUE_1))
         actor.interrupt()
     }
 
@@ -83,8 +83,8 @@ class ProposerActorTest {
                 .thenReturn(ROUND_TRIP_MS * 200)
                 .thenReturn(Long.MAX_VALUE)
         actor.start()
-        verify(network, timeout(1000).times(1)).broadcastToAcceptors(PROPOSER_B, Prepare(proposalId1))
-        verify(network, timeout(1000).times(1)).broadcastToAcceptors(PROPOSER_B, Prepare(proposalId2))
+        verify(channel, timeout(1000).times(1)).broadcastToAcceptors(PROPOSER_B, Prepare(proposalId1))
+        verify(channel, timeout(1000).times(1)).broadcastToAcceptors(PROPOSER_B, Prepare(proposalId2))
         actor.interrupt()
     }
 
@@ -106,17 +106,17 @@ class ProposerActorTest {
                 .thenReturn(0, 0) // 1 iteration of polling
                 .thenReturn(0, 0) // 2 iteration of polling
                 .thenReturn(Long.MAX_VALUE)
-        `when`(network.poll(sameNonNull(actor), anyLong()))
+        `when`(channel.poll(anyLong()))
                 .thenReturn(Pair(ACCEPTOR_A, Promise(proposalId1, null, null)))
                 .thenReturn(Pair(ACCEPTOR_B, Promise(proposalId1, null, null)))
                 .thenReturn(Pair(ACCEPTOR_A, Accepted(proposalId1, VALUE_2)))
                 .thenReturn(Pair(ACCEPTOR_A, Promise(proposalId2, proposalId1, VALUE_2)))
                 .thenReturn(Pair(ACCEPTOR_B, Promise(proposalId2, proposalId1, VALUE_2)))
         actor.start()
-        verify(network, timeout(1000).times(1)).broadcastToAcceptors(PROPOSER_B, Prepare(proposalId1))
-        verify(network, timeout(1000).times(1)).broadcastToAcceptors(PROPOSER_B, Accept(proposalId1, VALUE_2))
-        verify(network, timeout(1000).times(1)).broadcastToAcceptors(PROPOSER_B, Prepare(proposalId2))
-        verify(network, timeout(1000).times(1)).broadcastToAcceptors(PROPOSER_B, Accept(proposalId2, VALUE_2))
+        verify(channel, timeout(1000).times(1)).broadcastToAcceptors(PROPOSER_B, Prepare(proposalId1))
+        verify(channel, timeout(1000).times(1)).broadcastToAcceptors(PROPOSER_B, Accept(proposalId1, VALUE_2))
+        verify(channel, timeout(1000).times(1)).broadcastToAcceptors(PROPOSER_B, Prepare(proposalId2))
+        verify(channel, timeout(1000).times(1)).broadcastToAcceptors(PROPOSER_B, Accept(proposalId2, VALUE_2))
         actor.interrupt()
     }
 
@@ -124,7 +124,7 @@ class ProposerActorTest {
     fun `Proposer shouldn't be disrupted by duplicate messages in Phase 1`() {
         val proposalId1 = ProposalId(0, PROPOSER_B)
         val proposalId2 = ProposalId(1, PROPOSER_B)
-        `when`(network.poll(sameNonNull(actor), anyLong()))
+        `when`(channel.poll(anyLong()))
                 .thenReturn(Pair(ACCEPTOR_A, Promise(proposalId1, null, null)))
                 .thenReturn(Pair(ACCEPTOR_A, Promise(proposalId1, null, null)))
                 .thenReturn(Pair(ACCEPTOR_B, Promise(proposalId1, null, null)))
@@ -132,9 +132,9 @@ class ProposerActorTest {
                 .thenReturn(Pair(ACCEPTOR_A, Accepted(proposalId1, VALUE_2)))
                 .thenReturn(Pair(ACCEPTOR_B, Accepted(proposalId1, VALUE_2)))
         actor.start()
-        verify(network, timeout(1000).times(1)).broadcastToAcceptors(PROPOSER_B, Prepare(proposalId1))
-        verify(network, timeout(1000).times(1)).broadcastToAcceptors(PROPOSER_B, Accept(proposalId1, VALUE_2))
-        verify(network, timeout(1000).times(1)).broadcastToAcceptors(PROPOSER_B, Prepare(proposalId2))
+        verify(channel, timeout(1000).times(1)).broadcastToAcceptors(PROPOSER_B, Prepare(proposalId1))
+        verify(channel, timeout(1000).times(1)).broadcastToAcceptors(PROPOSER_B, Accept(proposalId1, VALUE_2))
+        verify(channel, timeout(1000).times(1)).broadcastToAcceptors(PROPOSER_B, Prepare(proposalId2))
         actor.interrupt()
     }
 
@@ -142,7 +142,7 @@ class ProposerActorTest {
     fun `Proposer shouldn't be disrupted by irrelevant messages in Phase 1`() {
         val proposalId1 = ProposalId(0, PROPOSER_B)
         val proposalId2 = ProposalId(1, PROPOSER_B)
-        `when`(network.poll(sameNonNull(actor), anyLong()))
+        `when`(channel.poll(anyLong()))
                 .thenReturn(Pair(ACCEPTOR_A, Promise(ProposalId(-1, PROPOSER_B), null, null)))
                 .thenReturn(Pair(ACCEPTOR_A, Promise(proposalId1, null, null)))
                 .thenReturn(Pair(ACCEPTOR_B, Promise(ProposalId(100, PROPOSER_B), null, null)))
@@ -150,9 +150,9 @@ class ProposerActorTest {
                 .thenReturn(Pair(ACCEPTOR_A, Accepted(proposalId1, VALUE_2)))
                 .thenReturn(Pair(ACCEPTOR_B, Accepted(proposalId1, VALUE_2)))
         actor.start()
-        verify(network, timeout(1000).times(1)).broadcastToAcceptors(PROPOSER_B, Prepare(proposalId1))
-        verify(network, timeout(1000).times(1)).broadcastToAcceptors(PROPOSER_B, Accept(proposalId1, VALUE_2))
-        verify(network, timeout(1000).times(1)).broadcastToAcceptors(PROPOSER_B, Prepare(proposalId2))
+        verify(channel, timeout(1000).times(1)).broadcastToAcceptors(PROPOSER_B, Prepare(proposalId1))
+        verify(channel, timeout(1000).times(1)).broadcastToAcceptors(PROPOSER_B, Accept(proposalId1, VALUE_2))
+        verify(channel, timeout(1000).times(1)).broadcastToAcceptors(PROPOSER_B, Prepare(proposalId2))
         actor.interrupt()
     }
 
@@ -160,7 +160,7 @@ class ProposerActorTest {
     fun `Proposer shouldn't be disrupted by duplicate messages in Phase 2`() {
         val proposalId1 = ProposalId(0, PROPOSER_B)
         val proposalId2 = ProposalId(1, PROPOSER_B)
-        `when`(network.poll(sameNonNull(actor), anyLong()))
+        `when`(channel.poll(anyLong()))
                 .thenReturn(Pair(ACCEPTOR_A, Promise(proposalId1, null, null)))
                 .thenReturn(Pair(ACCEPTOR_B, Promise(proposalId1, null, null)))
                 .thenReturn(Pair(ACCEPTOR_A, Accepted(proposalId1, VALUE_2)))
@@ -168,9 +168,9 @@ class ProposerActorTest {
                 .thenReturn(Pair(ACCEPTOR_B, Accepted(proposalId1, VALUE_2)))
                 .thenReturn(Pair(ACCEPTOR_B, Accepted(proposalId1, VALUE_2)))
         actor.start()
-        verify(network, timeout(1000).times(1)).broadcastToAcceptors(PROPOSER_B, Prepare(proposalId1))
-        verify(network, timeout(1000).times(1)).broadcastToAcceptors(PROPOSER_B, Accept(proposalId1, VALUE_2))
-        verify(network, timeout(1000).times(1)).broadcastToAcceptors(PROPOSER_B, Prepare(proposalId2))
+        verify(channel, timeout(1000).times(1)).broadcastToAcceptors(PROPOSER_B, Prepare(proposalId1))
+        verify(channel, timeout(1000).times(1)).broadcastToAcceptors(PROPOSER_B, Accept(proposalId1, VALUE_2))
+        verify(channel, timeout(1000).times(1)).broadcastToAcceptors(PROPOSER_B, Prepare(proposalId2))
         actor.interrupt()
     }
 
@@ -178,7 +178,7 @@ class ProposerActorTest {
     fun `Proposer shouldn't be disrupted by irrelevant messages in Phase 2`() {
         val proposalId1 = ProposalId(0, PROPOSER_B)
         val proposalId2 = ProposalId(1, PROPOSER_B)
-        `when`(network.poll(sameNonNull(actor), anyLong()))
+        `when`(channel.poll(anyLong()))
                 .thenReturn(Pair(ACCEPTOR_A, Promise(proposalId1, null, null)))
                 .thenReturn(Pair(ACCEPTOR_B, Promise(proposalId1, null, null)))
                 .thenReturn(Pair(ACCEPTOR_A, Accepted(ProposalId(-1, PROPOSER_B), VALUE_2)))
@@ -186,9 +186,9 @@ class ProposerActorTest {
                 .thenReturn(Pair(ACCEPTOR_B, Accepted(ProposalId(100, PROPOSER_B), VALUE_2)))
                 .thenReturn(Pair(ACCEPTOR_B, Accepted(proposalId1, VALUE_2)))
         actor.start()
-        verify(network, timeout(1000).times(1)).broadcastToAcceptors(PROPOSER_B, Prepare(proposalId1))
-        verify(network, timeout(1000).times(1)).broadcastToAcceptors(PROPOSER_B, Accept(proposalId1, VALUE_2))
-        verify(network, timeout(1000).times(1)).broadcastToAcceptors(PROPOSER_B, Prepare(proposalId2))
+        verify(channel, timeout(1000).times(1)).broadcastToAcceptors(PROPOSER_B, Prepare(proposalId1))
+        verify(channel, timeout(1000).times(1)).broadcastToAcceptors(PROPOSER_B, Accept(proposalId1, VALUE_2))
+        verify(channel, timeout(1000).times(1)).broadcastToAcceptors(PROPOSER_B, Prepare(proposalId2))
         actor.interrupt()
     }
 }

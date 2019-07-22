@@ -20,14 +20,14 @@ class AcceptorActorTest {
     @Mock
     private lateinit var disk: AcceptorDisk
     @Mock
-    private lateinit var network: AcceptorNetwork
+    private lateinit var channel: AcceptorChannel
     private lateinit var actor: AcceptorActor
 
     @BeforeTest
     fun beforeEach() {
         val acceptor = Acceptor(ACCEPTOR_ID, disk)
         actor = AcceptorActor(acceptor)
-        actor.attachNetwork(network)
+        actor.attachChannel(channel)
     }
 
     @AfterTest
@@ -39,70 +39,70 @@ class AcceptorActorTest {
     @Test
     fun `AcceptorActor should accept any Prepare and return null as accepted value if it hasn't given promise before`() {
         val proposalId1 = ProposalId(1, PROPOSER_A)
-        `when`(network.poll(actor))
+        `when`(channel.poll())
                 .thenReturn(Pair(PROPOSER_A, Prepare(proposalId1)))
                 .thenAnswer(AnswersWithDelay(Long.MAX_VALUE, null))
         actor.start()
-        verify(network, timeout(1000).times(1)).sendToProposer(ACCEPTOR_ID, PROPOSER_A, Promise(proposalId1, null, null))
+        verify(channel, timeout(1000).times(1)).sendToProposer(ACCEPTOR_ID, PROPOSER_A, Promise(proposalId1, null, null))
         actor.interrupt()
-        verifyNoMoreInteractions(network)
+        verifyNoMoreInteractions(channel)
     }
 
     @Test
     fun `AcceptorActor should tolerate duplicate Prepare if it hasn't given promise before`() {
         val proposalId1 = ProposalId(1, PROPOSER_A)
-        `when`(network.poll(actor))
+        `when`(channel.poll())
                 .thenReturn(Pair(PROPOSER_A, Prepare(proposalId1)))
                 .thenReturn(Pair(PROPOSER_A, Prepare(proposalId1)))
                 .thenAnswer(AnswersWithDelay(Long.MAX_VALUE, null))
         actor.start()
-        verify(network, timeout(1000).times(2)).sendToProposer(ACCEPTOR_ID, PROPOSER_A, Promise(proposalId1, null, null))
+        verify(channel, timeout(1000).times(2)).sendToProposer(ACCEPTOR_ID, PROPOSER_A, Promise(proposalId1, null, null))
         actor.interrupt()
-        verifyNoMoreInteractions(network)
+        verifyNoMoreInteractions(channel)
     }
 
     @Test
     fun `AcceptorActor shouldn't give Promise to any Prepare with lower proposal ID than last promised`() {
         val proposalId1 = ProposalId(1, PROPOSER_A)
         val proposalId0 = ProposalId(0, PROPOSER_B)
-        `when`(network.poll(actor))
+        `when`(channel.poll())
                 .thenReturn(Pair(PROPOSER_A, Prepare(proposalId1)))
                 .thenReturn(Pair(PROPOSER_A, Prepare(proposalId0)))
                 .thenAnswer(AnswersWithDelay(Long.MAX_VALUE, null))
         actor.start()
-        verify(network, timeout(1000).times(1)).sendToProposer(ACCEPTOR_ID, PROPOSER_A, Promise(proposalId1, null, null))
+        verify(channel, timeout(1000).times(1)).sendToProposer(ACCEPTOR_ID, PROPOSER_A, Promise(proposalId1, null, null))
         actor.interrupt()
-        verifyNoMoreInteractions(network)
+        verifyNoMoreInteractions(channel)
     }
 
     @Test
     fun `AcceptorActor shouldn't accept anything with lower proposal ID than last promised`() {
         val proposalId1 = ProposalId(1, PROPOSER_A)
         val proposalId0 = ProposalId(0, PROPOSER_B)
-        `when`(network.poll(actor))
+        `when`(channel.poll())
                 .thenReturn(Pair(PROPOSER_A, Prepare(proposalId1)))
                 .thenReturn(Pair(PROPOSER_A, Accept(proposalId0, "some_value")))
                 .thenAnswer(AnswersWithDelay(Long.MAX_VALUE, null))
         actor.start()
-        verify(network, timeout(1000).times(1)).sendToProposer(ACCEPTOR_ID, PROPOSER_A, Promise(proposalId1, null, null))
+        verify(channel, timeout(1000).times(1)).sendToProposer(ACCEPTOR_ID, PROPOSER_A, Promise(proposalId1, null, null))
         Thread.sleep(1000)
         actor.interrupt()
-        verifyNoMoreInteractions(network)
+        verifyNoMoreInteractions(channel)
     }
 
     @Test
     fun `AcceptorActor should accept value with equal proposal ID as promised`() {
         val proposalId = ProposalId(1, PROPOSER_A)
         val value = "some_value"
-        `when`(network.poll(actor))
+        `when`(channel.poll())
                 .thenReturn(Pair(PROPOSER_A, Prepare(proposalId)))
                 .thenReturn(Pair(PROPOSER_A, Accept(proposalId, value)))
                 .thenAnswer(AnswersWithDelay(Long.MAX_VALUE, null))
         actor.start()
-        verify(network, timeout(1000).times(1)).sendToProposer(ACCEPTOR_ID, PROPOSER_A, Promise(proposalId, null, null))
-        verify(network, timeout(1000).times(1)).sendToProposer(ACCEPTOR_ID, PROPOSER_A, Accepted(proposalId, value))
+        verify(channel, timeout(1000).times(1)).sendToProposer(ACCEPTOR_ID, PROPOSER_A, Promise(proposalId, null, null))
+        verify(channel, timeout(1000).times(1)).sendToProposer(ACCEPTOR_ID, PROPOSER_A, Accepted(proposalId, value))
         actor.interrupt()
-        verifyNoMoreInteractions(network)
+        verifyNoMoreInteractions(channel)
     }
 
     @Test
@@ -110,15 +110,15 @@ class AcceptorActorTest {
         val proposalId1 = ProposalId(1, PROPOSER_A)
         val proposalId2 = ProposalId(1, PROPOSER_B)
         val value = "some_value"
-        `when`(network.poll(actor))
+        `when`(channel.poll())
                 .thenReturn(Pair(PROPOSER_A, Prepare(proposalId1)))
                 .thenReturn(Pair(PROPOSER_A, Accept(proposalId2, value)))
                 .thenAnswer(AnswersWithDelay(Long.MAX_VALUE, null))
         actor.start()
-        verify(network, timeout(1000).times(1)).sendToProposer(ACCEPTOR_ID, PROPOSER_A, Promise(proposalId1, null, null))
-        verify(network, timeout(1000).times(1)).sendToProposer(ACCEPTOR_ID, PROPOSER_A, Accepted(proposalId2, value))
+        verify(channel, timeout(1000).times(1)).sendToProposer(ACCEPTOR_ID, PROPOSER_A, Promise(proposalId1, null, null))
+        verify(channel, timeout(1000).times(1)).sendToProposer(ACCEPTOR_ID, PROPOSER_A, Accepted(proposalId2, value))
         actor.interrupt()
-        verifyNoMoreInteractions(network)
+        verifyNoMoreInteractions(channel)
     }
 
     @Test
@@ -126,17 +126,17 @@ class AcceptorActorTest {
         val proposalId1 = ProposalId(1, PROPOSER_A)
         val proposalId2 = ProposalId(2, PROPOSER_B)
         val value = "some_value"
-        `when`(network.poll(actor))
+        `when`(channel.poll())
                 .thenReturn(Pair(PROPOSER_A, Prepare(proposalId1)))
                 .thenReturn(Pair(PROPOSER_A, Accept(proposalId1, value)))
                 .thenReturn(Pair(PROPOSER_B, Prepare(proposalId2)))
                 .thenAnswer(AnswersWithDelay(Long.MAX_VALUE, null))
         actor.start()
-        verify(network, timeout(1000).times(1)).sendToProposer(ACCEPTOR_ID, PROPOSER_A, Promise(proposalId1, null, null))
-        verify(network, timeout(1000).times(1)).sendToProposer(ACCEPTOR_ID, PROPOSER_A, Accepted(proposalId1, value))
-        verify(network, timeout(1000).times(1)).sendToProposer(ACCEPTOR_ID, PROPOSER_B, Promise(proposalId2, proposalId1, value))
+        verify(channel, timeout(1000).times(1)).sendToProposer(ACCEPTOR_ID, PROPOSER_A, Promise(proposalId1, null, null))
+        verify(channel, timeout(1000).times(1)).sendToProposer(ACCEPTOR_ID, PROPOSER_A, Accepted(proposalId1, value))
+        verify(channel, timeout(1000).times(1)).sendToProposer(ACCEPTOR_ID, PROPOSER_B, Promise(proposalId2, proposalId1, value))
         actor.interrupt()
-        verifyNoMoreInteractions(network)
+        verifyNoMoreInteractions(channel)
     }
 
     @Test
@@ -144,18 +144,18 @@ class AcceptorActorTest {
         val proposalId1 = ProposalId(1, PROPOSER_A)
         val proposalId2 = ProposalId(2, PROPOSER_B)
         val value = "some_value"
-        `when`(network.poll(actor))
+        `when`(channel.poll())
                 .thenReturn(Pair(PROPOSER_A, Prepare(proposalId1)))
                 .thenReturn(Pair(PROPOSER_A, Accept(proposalId1, value)))
                 .thenReturn(Pair(PROPOSER_B, Prepare(proposalId2)))
                 .thenReturn(Pair(PROPOSER_B, Prepare(proposalId2)))
                 .thenAnswer(AnswersWithDelay(Long.MAX_VALUE, null))
         actor.start()
-        verify(network, timeout(1000).times(1)).sendToProposer(ACCEPTOR_ID, PROPOSER_A, Promise(proposalId1, null, null))
-        verify(network, timeout(1000).times(1)).sendToProposer(ACCEPTOR_ID, PROPOSER_A, Accepted(proposalId1, value))
-        verify(network, timeout(1000).times(2)).sendToProposer(ACCEPTOR_ID, PROPOSER_B, Promise(proposalId2, proposalId1, value))
+        verify(channel, timeout(1000).times(1)).sendToProposer(ACCEPTOR_ID, PROPOSER_A, Promise(proposalId1, null, null))
+        verify(channel, timeout(1000).times(1)).sendToProposer(ACCEPTOR_ID, PROPOSER_A, Accepted(proposalId1, value))
+        verify(channel, timeout(1000).times(2)).sendToProposer(ACCEPTOR_ID, PROPOSER_B, Promise(proposalId2, proposalId1, value))
         actor.interrupt()
-        verifyNoMoreInteractions(network)
+        verifyNoMoreInteractions(channel)
     }
 
     @Test
@@ -165,7 +165,7 @@ class AcceptorActorTest {
         val proposalId3 = ProposalId(3, PROPOSER_A)
         val value1 = "some_value"
         val value2 = "another_value"
-        `when`(network.poll(actor))
+        `when`(channel.poll())
                 .thenReturn(Pair(PROPOSER_A, Prepare(proposalId1)))
                 .thenReturn(Pair(PROPOSER_A, Accept(proposalId1, value1)))
                 .thenReturn(Pair(PROPOSER_B, Prepare(proposalId2)))
@@ -173,25 +173,25 @@ class AcceptorActorTest {
                 .thenReturn(Pair(PROPOSER_A, Prepare(proposalId3)))
                 .thenAnswer(AnswersWithDelay(Long.MAX_VALUE, null))
         actor.start()
-        verify(network, timeout(1000).times(1)).sendToProposer(ACCEPTOR_ID, PROPOSER_A, Promise(proposalId1, null, null))
-        verify(network, timeout(1000).times(1)).sendToProposer(ACCEPTOR_ID, PROPOSER_A, Accepted(proposalId1, value1))
-        verify(network, timeout(1000).times(1)).sendToProposer(ACCEPTOR_ID, PROPOSER_B, Promise(proposalId2, proposalId1, value1))
-        verify(network, timeout(1000).times(1)).sendToProposer(ACCEPTOR_ID, PROPOSER_B, Accepted(proposalId2, value2))
-        verify(network, timeout(1000).times(1)).sendToProposer(ACCEPTOR_ID, PROPOSER_A, Promise(proposalId3, proposalId2, value2))
+        verify(channel, timeout(1000).times(1)).sendToProposer(ACCEPTOR_ID, PROPOSER_A, Promise(proposalId1, null, null))
+        verify(channel, timeout(1000).times(1)).sendToProposer(ACCEPTOR_ID, PROPOSER_A, Accepted(proposalId1, value1))
+        verify(channel, timeout(1000).times(1)).sendToProposer(ACCEPTOR_ID, PROPOSER_B, Promise(proposalId2, proposalId1, value1))
+        verify(channel, timeout(1000).times(1)).sendToProposer(ACCEPTOR_ID, PROPOSER_B, Accepted(proposalId2, value2))
+        verify(channel, timeout(1000).times(1)).sendToProposer(ACCEPTOR_ID, PROPOSER_A, Promise(proposalId3, proposalId2, value2))
         actor.interrupt()
-        verifyNoMoreInteractions(network)
+        verifyNoMoreInteractions(channel)
     }
 
     @Test
     fun `AcceptorActor should accept if it hasn't given promise before`() {
         val proposalId1 = ProposalId(1, PROPOSER_B)
         val value = "some_value"
-        `when`(network.poll(actor))
+        `when`(channel.poll())
                 .thenReturn(Pair(PROPOSER_B, Accept(proposalId1, value)))
                 .thenAnswer(AnswersWithDelay(Long.MAX_VALUE, null))
         actor.start()
-        verify(network, timeout(1000).times(1)).sendToProposer(ACCEPTOR_ID, PROPOSER_B, Accepted(proposalId1, value))
+        verify(channel, timeout(1000).times(1)).sendToProposer(ACCEPTOR_ID, PROPOSER_B, Accepted(proposalId1, value))
         actor.interrupt()
-        verifyNoMoreInteractions(network)
+        verifyNoMoreInteractions(channel)
     }
 }

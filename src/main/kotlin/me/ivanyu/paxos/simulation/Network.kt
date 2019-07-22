@@ -4,87 +4,110 @@ import me.ivanyu.paxos.AcceptorId
 import me.ivanyu.paxos.MessageToAcceptor
 import me.ivanyu.paxos.MessageToProposer
 import me.ivanyu.paxos.ProposerId
+import java.lang.IllegalStateException
 import java.util.concurrent.Executors
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.TimeUnit
 import kotlin.random.Random
 
-interface ProposerNetwork {
-    fun poll(to: ProposerActor, maxWaitMs: Long): Pair<AcceptorId, MessageToProposer>?
-    fun broadcastToAcceptors(from: ProposerId, message: MessageToAcceptor)
-}
-
-interface AcceptorNetwork {
-    fun poll(to: AcceptorActor): Pair<ProposerId, MessageToAcceptor>
+interface AcceptorChannel {
+    fun poll(): Pair<ProposerId, MessageToAcceptor>
     fun sendToProposer(from: AcceptorId, to: ProposerId, message: MessageToProposer)
 }
 
-class Network(acceptorActors: List<AcceptorActor>,
-              proposerActors: List<ProposerActor>,
-              private val roundTripMs: Long,
+interface ProposerChannel {
+    fun poll(maxWaitMs: Long): Pair<AcceptorId, MessageToProposer>?
+    fun broadcastToAcceptors(from: ProposerId, message: MessageToAcceptor)
+}
+
+class Network(private val roundTripMs: Long,
               private val deliverMessageProb: Double,
-              private val duplicateMessageProb: Double) : ProposerNetwork, AcceptorNetwork {
+              private val duplicateMessageProb: Double) {
     private val scheduler = Executors.newScheduledThreadPool(1)
 
-    private val acceptorQueues: Map<AcceptorId, LinkedBlockingQueue<Pair<ProposerId, MessageToAcceptor>>> = acceptorActors.map {
-        it.id to LinkedBlockingQueue<Pair<ProposerId, MessageToAcceptor>>()
-    }.toMap()
+    private inner class AcceptorChannelImpl : AcceptorChannel {
+        private val queue = LinkedBlockingQueue<Pair<ProposerId, MessageToAcceptor>>()
 
-    private val proposerQueues: Map<ProposerId, LinkedBlockingQueue<Pair<AcceptorId, MessageToProposer>>> = proposerActors.map {
-        it.id to LinkedBlockingQueue<Pair<AcceptorId, MessageToProposer>>()
-    }.toMap()
+        override fun poll(): Pair<ProposerId, MessageToAcceptor> {
+            return queue.take()
+        }
 
-    override fun poll(to: AcceptorActor): Pair<ProposerId, MessageToAcceptor> {
-        return acceptorQueues.getValue(to.id).take()
+        override fun sendToProposer(from: AcceptorId, to: ProposerId, message: MessageToProposer) {
+            scheduleMessageDelivery {
+                this@Network.proposerChannels.getValue(to).deliver(from, message)
+            }
+        }
+
+        /**
+         * Deliver a message from a Proposer to this channel's Acceptor.
+         *
+         * `Network`'s internal API.
+         */
+        fun deliver(from: ProposerId, message: MessageToAcceptor) {
+            queue.put(Pair(from, message))
+        }
     }
 
-    override fun sendToProposer(from: AcceptorId, to: ProposerId, message: MessageToProposer) {
-        try {
-            if (shouldDeliverMessage()) {
-                val sendFunc = {
-                    proposerQueues.getValue(to).put(Pair(from, message))
-                }
-                scheduler.schedule(sendFunc, Random.nextLong(roundTripMs), TimeUnit.MILLISECONDS)
+    private inner class ProposerChannelImpl : ProposerChannel {
+        private val queue = LinkedBlockingQueue<Pair<AcceptorId, MessageToProposer>>()
 
-                if (shouldDeliverDuplicate()) {
-                    scheduler.schedule(sendFunc, Random.nextLong(roundTripMs), TimeUnit.MILLISECONDS)
+        override fun poll(maxWaitMs: Long): Pair<AcceptorId, MessageToProposer>? {
+            return queue.poll(maxWaitMs, TimeUnit.MILLISECONDS)
+        }
+
+        override fun broadcastToAcceptors(from: ProposerId, message: MessageToAcceptor) {
+            this@Network.acceptorChannels.forEach {
+                scheduleMessageDelivery { it.value.deliver(from, message) }
+            }
+        }
+
+        /**
+         * Deliver a message from a Acceptor to this channel's Proposer.
+         *
+         * `Network`'s internal API.
+         */
+        fun deliver(from: AcceptorId, message: MessageToProposer) {
+            queue.put(Pair(from, message))
+        }
+    }
+
+    fun getAcceptorChannel(acceptorActor: AcceptorActor): AcceptorChannel {
+        if (acceptorChannels.containsKey(acceptorActor.id)) {
+            throw IllegalStateException("Acceptor already attached")
+        }
+        val channel = AcceptorChannelImpl()
+        acceptorChannels[acceptorActor.id] = channel
+        return channel
+    }
+
+    fun getProposerChannel(proposerActor: ProposerActor): ProposerChannel {
+        if (proposerChannels.containsKey(proposerActor.id)) {
+            throw IllegalStateException("Proposer already attached")
+        }
+        val channel = ProposerChannelImpl()
+        proposerChannels[proposerActor.id] = channel
+        return channel
+    }
+
+    private val proposerChannels: MutableMap<AcceptorId, ProposerChannelImpl> = mutableMapOf()
+    private val acceptorChannels: MutableMap<AcceptorId, AcceptorChannelImpl> = mutableMapOf()
+
+    private fun scheduleMessageDelivery(deliveryAction: () -> Unit) {
+        try {
+            val shouldDeliverMessage = Random.nextDouble() < deliverMessageProb
+            if (shouldDeliverMessage) {
+                scheduler.schedule(deliveryAction, Random.nextLong(roundTripMs), TimeUnit.MILLISECONDS)
+
+                val shouldDeliverDuplicate = Random.nextDouble() < duplicateMessageProb
+                if (shouldDeliverDuplicate) {
+                    scheduler.schedule(deliveryAction, Random.nextLong(roundTripMs), TimeUnit.MILLISECONDS)
                 }
             }
         } catch (e: RejectedExecutionException) {
-            // it's ok to silently ignore it
+            // It's OK to ignore the exception.
+            // It means the network in shutting down and the delivery is no longer needed.
         }
-    }
-
-    override fun poll(to: ProposerActor, maxWaitMs: Long): Pair<AcceptorId, MessageToProposer>? {
-        return proposerQueues.getValue(to.id).poll(maxWaitMs, TimeUnit.MILLISECONDS)
-    }
-
-    override fun broadcastToAcceptors(from: ProposerId, message: MessageToAcceptor) {
-        acceptorQueues.forEach {
-            try {
-                if (shouldDeliverMessage()) {
-                    val sendFunc = {
-                        it.value.put(Pair(from, message))
-                    }
-                    scheduler.schedule(sendFunc, Random.nextLong(roundTripMs), TimeUnit.MILLISECONDS)
-
-                    if (shouldDeliverDuplicate()) {
-                        scheduler.schedule(sendFunc, Random.nextLong(roundTripMs), TimeUnit.MILLISECONDS)
-                    }
-                }
-            } catch (e: RejectedExecutionException) {
-                // it's ok to silently ignore it
-            }
-        }
-    }
-
-    private fun shouldDeliverMessage(): Boolean {
-        return Random.nextDouble() < deliverMessageProb
-    }
-
-    private fun shouldDeliverDuplicate(): Boolean {
-        return Random.nextDouble() < duplicateMessageProb
     }
 
     fun shutdown() {

@@ -60,11 +60,19 @@ private fun run(runN: Int, waitAfterCommittedMs: Long, output: Boolean): Boolean
         val proposer = Proposer("PROPOSER_$it", "value_$it", quorumSize, cheatingProposers)
         ProposerActor(roundTripMs, time, proposer)
     }
-    val network = Network(acceptorActors, proposerActors, roundTripMs, deliverMessageProb, duplicateMessageProb)
+    val network = Network(roundTripMs, deliverMessageProb, duplicateMessageProb)
 
-    acceptorActors.forEach { it.attachNetwork(network) }
-    proposerActors.forEach { it.attachNetwork(network) }
+    acceptorActors.forEach {
+        val channel = network.getAcceptorChannel(it)
+        it.attachChannel(channel)
+    }
+    proposerActors.forEach {
+        val channel = network.getProposerChannel(it)
+        it.attachChannel(channel)
+    }
 
+    // Concurrency note:
+    // All previous stuff including network init happens-before thread starts.
     acceptorActors.forEach { it.start() }
     val scheduler = Executors.newScheduledThreadPool(1)
     proposerActors.forEach { scheduler.schedule(it::start, Random.nextLong(2 * roundTripMs), TimeUnit.MILLISECONDS) }

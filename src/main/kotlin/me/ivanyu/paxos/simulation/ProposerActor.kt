@@ -13,11 +13,10 @@ class ProposerActor(private val roundTripMs: Long,
 
     val id: ProposerId = proposer.id
 
-    @Volatile
-    private lateinit var network: ProposerNetwork
+    private lateinit var channel: ProposerChannel
 
-    fun attachNetwork(network: ProposerNetwork) {
-        this.network = network
+    fun attachChannel(channel: ProposerChannel) {
+        this.channel = channel
     }
 
     private enum class Phase {
@@ -45,14 +44,14 @@ class ProposerActor(private val roundTripMs: Long,
     private fun phase1() {
         val prepare = proposer.nextRound()
         logger.debug("[Phase 1] Starting next round with {}", prepare)
-        network.broadcastToAcceptors(id, prepare)
+        channel.broadcastToAcceptors(id, prepare)
 
         val waitForPromisesTimeout = roundTripMs * 2
         val waitForPromisesTimer = Timer(time, waitForPromisesTimeout)
         loop@
         while (!waitForPromisesTimer.expired()) {
             logger.trace("[Phase 1] Polling")
-            val pollResult = network.poll(this, waitForPromisesTimer.remain()) ?: continue@loop
+            val pollResult = channel.poll(waitForPromisesTimer.remain()) ?: continue@loop
             logger.debug("[Phase 1] Received {}", pollResult)
             val (acceptorId, message) = pollResult
             when (message) {
@@ -60,7 +59,7 @@ class ProposerActor(private val roundTripMs: Long,
                     val accept = proposer.receivePromise(acceptorId, message)
                     if (accept != null) {
                         logger.debug("[Phase 1] Broadcasting {}", accept)
-                        network.broadcastToAcceptors(id, accept)
+                        channel.broadcastToAcceptors(id, accept)
                         phase = Phase.PHASE_2
                         break@loop
                     }
@@ -77,7 +76,7 @@ class ProposerActor(private val roundTripMs: Long,
         loop@
         while (!waitForPromisesTimer.expired()) {
             logger.debug("[Phase 2] Polling")
-            val pollResult = network.poll(this, waitForPromisesTimer.remain()) ?: continue@loop
+            val pollResult = channel.poll(waitForPromisesTimer.remain()) ?: continue@loop
             logger.debug("[Phase 1] Received {}", pollResult)
             val (acceptorId, message) = pollResult
             when (message) {

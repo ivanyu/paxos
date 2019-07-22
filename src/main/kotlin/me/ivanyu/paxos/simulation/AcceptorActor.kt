@@ -11,30 +11,29 @@ class AcceptorActor(private val acceptor: Acceptor): Actor(acceptor.id) {
 
     val id: AcceptorId = acceptor.id
 
-    @Volatile
-    private lateinit var network: AcceptorNetwork
+    private lateinit var channel: AcceptorChannel
 
-    fun attachNetwork(network: AcceptorNetwork) {
-        this.network = network
+    fun attachChannel(channel: AcceptorChannel) {
+        this.channel = channel
     }
 
     override fun run() {
         logger.debug("Starting")
         try {
             while (!isInterrupted) {
-                val (proposerId, message) = network.poll(this)
+                val (proposerId, message) = channel.poll()
                 when (message) {
                     is Prepare -> {
                         val promise = acceptor.receivePrepare(message)
                         if (promise != null) {
-                            network.sendToProposer(id, proposerId, promise)
+                            channel.sendToProposer(id, proposerId, promise)
                         }
                     }
 
                     is Accept -> {
                         val accepted = acceptor.receiveAccept(message)
                         if (accepted != null) {
-                            network.sendToProposer(id, proposerId, accepted)
+                            channel.sendToProposer(id, proposerId, accepted)
                         }
                     }
                 }
