@@ -6,7 +6,6 @@ import me.ivanyu.paxos.Proposer
 import org.apache.logging.log4j.LogManager
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
-import kotlin.math.ceil
 import kotlin.random.Random
 
 class Simulation(private val cheatingProposers: Boolean,
@@ -35,7 +34,7 @@ class Simulation(private val cheatingProposers: Boolean,
     fun run(): Boolean {
         val acceptorsN = Random.nextInt(acceptorsFrom, acceptorsTo + 1)
         val proposersN = Random.nextInt(proposersFrom, proposersTo + 1)
-        val quorumSize: Int = ceil(acceptorsN.toDouble() / 2).toInt()
+        val quorumSize: Int = acceptorsN / 2 + 1
 
         val roundTripMs = Random.nextLong(roundTripMsFrom.toLong(), roundTripMsTo.toLong() + 1)
 //        val waitAfterCommittedMs = roundTripMs * 30
@@ -43,9 +42,9 @@ class Simulation(private val cheatingProposers: Boolean,
         val deliverMessageProb = Random.nextDouble(deliverMessageProbFrom, deliverMessageProbTo)
         val duplicateMessageProb = Random.nextDouble(duplicateMessageProbFrom, duplicateMessageProbTo)
 
-        logger.info("acceptorsN={}, proposersN={} "
+        logger.info("acceptorsN={}, proposersN={} quorumSize={} "
                 + "roundTripMs={} waitAfterCommittedMs={} deliverMessageProb={} duplicateMessageProb={}",
-                acceptorsN, proposersN,
+                acceptorsN, proposersN, quorumSize,
                 roundTripMs, waitAfterCommittedMs, deliverMessageProb, duplicateMessageProb)
 
         val observer = GlobalObserver(quorumSize)
