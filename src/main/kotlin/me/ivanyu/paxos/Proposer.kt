@@ -7,7 +7,7 @@ class Proposer(val id: ProposerId,
                private val value: Value,
                private val quorumSize: Int,
                private val cheat: Boolean) {
-    private val logger = LogManager.getLogger(this::class.java)
+    private val logger = LogManager.getLogger()
 
     var round: Int = -1
         private set(value) { field = value }

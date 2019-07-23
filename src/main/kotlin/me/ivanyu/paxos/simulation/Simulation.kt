@@ -10,7 +10,7 @@ import kotlin.random.Random
 
 class Simulation(private val cheatingProposers: Boolean,
                  private val outputIfCommitmentWasBroken: Boolean) {
-    private val logger = LogManager.getLogger(Simulation::class.java)
+    private val logger = LogManager.getLogger()
 
     private val time = SystemTime()
 

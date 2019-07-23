@@ -9,7 +9,7 @@ import org.apache.logging.log4j.LogManager
 class ProposerActor(private val roundTripMs: Long,
                     private val time: Time,
                     private val proposer: Proposer): Actor(proposer.id) {
-    private val logger = LogManager.getLogger(this::class.java)
+    private val logger = LogManager.getLogger()
 
     val id: ProposerId = proposer.id
 

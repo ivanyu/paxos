@@ -7,7 +7,7 @@ import me.ivanyu.paxos.Prepare
 import org.apache.logging.log4j.LogManager
 
 class AcceptorActor(private val acceptor: Acceptor): Actor(acceptor.id) {
-    private val logger = LogManager.getLogger(this::class.java)
+    private val logger = LogManager.getLogger()
 
     val id: AcceptorId = acceptor.id
 

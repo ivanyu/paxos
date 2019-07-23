@@ -16,7 +16,7 @@ data class DiskWrite(val diskId: String,
 }
 
 class GlobalObserver(private val quorumSize: Int) {
-    private val logger = LogManager.getLogger(this::class.java)
+    private val logger = LogManager.getLogger()
 
     private val eventLog: MutableList<Event> = mutableListOf()
     private val latestEventPerDisk: MutableMap<String, Pair<ProposalId?, Value?>> = mutableMapOf()
