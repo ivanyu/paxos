@@ -73,7 +73,7 @@ class Network(private val roundTripMs: Long,
     }
 
     fun getAcceptorChannel(acceptorActor: AcceptorActor): AcceptorChannel {
-        if (acceptorChannels.containsKey(acceptorActor.id)) {
+        if (acceptorActor.id in acceptorChannels) {
             throw IllegalStateException("Acceptor already attached")
         }
         val channel = AcceptorChannelImpl()
@@ -82,7 +82,7 @@ class Network(private val roundTripMs: Long,
     }
 
     fun getProposerChannel(proposerActor: ProposerActor): ProposerChannel {
-        if (proposerChannels.containsKey(proposerActor.id)) {
+        if (proposerActor.id in proposerChannels) {
             throw IllegalStateException("Proposer already attached")
         }
         val channel = ProposerChannelImpl()

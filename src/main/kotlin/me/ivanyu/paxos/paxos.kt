@@ -20,8 +20,6 @@ data class Accepted(val proposalId: ProposalId,
 data class ProposalId(val round: Int, val proposerId: ProposerId) : Comparable<ProposalId> {
 
     override fun compareTo(other: ProposalId): Int {
-        Objects.requireNonNull(other)
-
         if (round < other.round) {
             return -1
         }
